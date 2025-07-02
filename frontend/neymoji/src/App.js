@@ -414,30 +414,35 @@ useEffect(() => {
   // Check current frame
   // / ** Aqui a função checkFrame atualizada com cooldown **
   const checkFrame = useCallback(async () => {
-    if (!gameState.gameActive || isChecking || isCooldown) return; // bloqueia checagem se no cooldown
-    const frame = captureFrame();
-    if (!frame) return;
+  if (!gameState.gameActive || isChecking || isCooldown) return; // bloqueia checagem se no cooldown
+  const frame = captureFrame();
+  if (!frame) return;
 
-    setIsChecking(true);
-    try {
-      const res = await fetch('http://localhost:5000/check_frame', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ frame })
-      });
-      const data = await res.json();
+  setIsChecking(true);
+  try {
+    const res = await fetch('http://localhost:5000/check_frame', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ frame })
+    });
+    const data = await res.json();
 
-      if (data.success) {
-        if (data.game_over) {
-          setGameOver(true);
-          setGameState(prev => ({ ...prev, gameActive: false }));
-          if (data.freeze_frames) setFreezeFrames(data.freeze_frames);
-        } else if (data.expression_matched) {
-          setLastResult('🎉 Perfect! +100 points');
-          setShowSuccessEffect(true);
+    if (data.success) {
+      if (data.game_over) {
+        setGameOver(true);
+        setGameState(prev => ({ ...prev, gameActive: false }));
+        if (data.freeze_frames) setFreezeFrames(data.freeze_frames);
+      } else if (data.expression_matched) {
+        setLastResult('🎉 Perfect! +100 points');
+        setShowSuccessEffect(true);
+        setIsCooldown(true); // start cooldown after correct guess
 
-          if (data.freeze_frame) {
-            setFreezeFrames(prev => [...prev, { round: gameState.currentRound, emoji: gameState.currentEmoji, image: data.freeze_frame }]);
-          }
+        if (data.freeze_frame) {
+          setFreezeFrames(prev => [...prev, { round: gameState.currentRound, emoji: gameState.currentEmoji, image: data.freeze_frame }]);
+        }
 
+        // Delay para mostrar efeito antes de atualizar estado e liberar cooldown
+        setTimeout(() => {
           setGameState({
             gameActive: true,
             currentEmoji: data.game_state.current_emoji,
@@ -446,35 +451,39 @@ useEffect(() => {
             totalRounds: data.game_state.total_rounds,
             timeLeft: data.game_state.time_left
           });
-        } else if (data.round_timeout) {
-          setLastResult('⏰ Time\'s up! Next round...');
-          setShowFailEffect(true);
-          setIsCooldown(true); // ativa cooldown
+          setIsCooldown(false);
+        }, 1500);
 
-          setTimeout(() => {
-            setShowFailEffect(false);
-          }, 1500);
+      } else if (data.round_timeout) {
+        setLastResult('⏰ Time\'s up! Next round...');
+        setShowFailEffect(true);
+        setIsCooldown(true); // ativa cooldown
 
-          setTimeout(() => {
-            setGameState({
-              gameActive: true,
-              currentEmoji: data.game_state.current_emoji,
-              currentRound: data.game_state.current_round,
-              score: data.game_state.score,
-              totalRounds: data.game_state.total_rounds,
-              timeLeft: data.game_state.time_left
-            });
-            setIsCooldown(false); // libera cooldown
-          }, 2000);
-        } else {
-          setGameState(prev => ({ ...prev, timeLeft: data.game_state.time_left }));
-        }
+        setTimeout(() => {
+          setShowFailEffect(false);
+        }, 1500);
+
+        setTimeout(() => {
+          setGameState({
+            gameActive: true,
+            currentEmoji: data.game_state.current_emoji,
+            currentRound: data.game_state.current_round,
+            score: data.game_state.score,
+            totalRounds: data.game_state.total_rounds,
+            timeLeft: data.game_state.time_left
+          });
+          setIsCooldown(false); // libera cooldown
+        }, 2000);
+      } else {
+        setGameState(prev => ({ ...prev, timeLeft: data.game_state.time_left }));
       }
-    } catch (err) {
-      console.error('Failed to check frame:', err);
     }
-    setIsChecking(false);
-  }, [gameState, isChecking, isCooldown, captureFrame]);
+  } catch (err) {
+    console.error('Failed to check frame:', err);
+  }
+  setIsChecking(false);
+}, [gameState, isChecking, isCooldown, captureFrame]);
+
 
   // Auto-check frames during game
   useEffect(() => {
