@@ -316,21 +316,29 @@ const EmojiGuessingGame = () => {
     }
   };
 
+  const streamRef = useRef(null);
+  
   // Start webcam
   const startWebcam = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { width: 640, height: 480 } 
-      });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        setIsWebcamActive(true);
-      }
-    } catch (err) {
-      console.error('Error accessing webcam:', err);
-      alert('Unable to access webcam. Please allow camera permissions.');
-    }
-  };
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { width: 640, height: 480 },
+    });
+    streamRef.current = stream;        // 1
+    setIsWebcamActive(true);           // 2
+  } catch (err) {
+    console.error('Error accessing webcam:', err);
+    alert('Unable to access webcam. Please allow camera permissions.');
+  }
+}
+
+useEffect(() => {                      // 3
+  if (isWebcamActive && videoRef.current && streamRef.current) {
+    videoRef.current.srcObject = streamRef.current;
+    // garante início da reprodução no iOS/Safari
+    videoRef.current.onloadedmetadata = () => videoRef.current.play();
+  }
+}, [isWebcamActive]);
 
   // Capture frame from video
   const captureFrame = useCallback(() => {
