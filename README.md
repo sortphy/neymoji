@@ -1,7 +1,5 @@
 # 😀 Neymoji
 
-**Neymoji** is a fun project that combines computer vision and frontend magic. Just run the backend and frontend, smile for the camera, and enjoy!
-
 ---
 
 ## 😎 How to Run
