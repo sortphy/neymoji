@@ -265,10 +265,24 @@ def get_game_state():
         'freeze_frames': game_state['freeze_frames']
     })
 
+# Add a simple home route to avoid 404 errors
+@app.route('/')
+def home():
+    return jsonify({
+        'message': 'Emoji Guessing Game Backend is running!',
+        'endpoints': {
+            'start_game': 'POST /start_game',
+            'check_frame': 'POST /check_frame', 
+            'game_state': 'GET /game_state'
+        }
+    })
+
 if __name__ == '__main__':
-    print("Starting Emoji Guessing Game Backend...")
-    print("Available endpoints:")
-    print("- POST /start_game - Start a new game")
-    print("- POST /check_frame - Send webcam frame for analysis")
-    print("- GET /game_state - Get current game state")
+    print("🎮 Starting Emoji Guessing Game Backend...")
+    print("📡 Server running on http://localhost:5000")
+    print("🔗 Available endpoints:")
+    print("   - POST /start_game - Start a new game")
+    print("   - POST /check_frame - Send webcam frame for analysis")
+    print("   - GET /game_state - Get current game state")
+    print("✅ Backend ready! Now start your React frontend.")
     app.run(debug=True, host='0.0.0.0', port=5000)
