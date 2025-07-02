@@ -197,11 +197,15 @@ def check_expression(frame_data):
 
 @app.route('/start_game', methods=['POST'])
 def start_game():
+    # reset contadores
     game_state['current_round'] = 1
     game_state['score'] = 0
     game_state['freeze_frames'] = []
     game_state['game_active'] = True
-    
+
+    # ⬇️ novo: zera a lista de emojis já usados
+    game_state['used_emojis'] = []
+
     if start_new_round():
         return jsonify({
             'success': True,
@@ -213,7 +217,9 @@ def start_game():
                 'time_left': game_state['round_duration']
             }
         })
+
     return jsonify({'success': False, 'message': 'Failed to start game'})
+
 
 @app.route('/check_frame', methods=['POST'])
 def check_frame():

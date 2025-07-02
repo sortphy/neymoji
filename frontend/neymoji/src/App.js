@@ -1,9 +1,17 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Camera, Play, RotateCcw, Trophy, Clock, Target } from 'lucide-react';
+import { Camera, Play, RotateCcw, Trophy, Clock, Target, XCircle } from 'lucide-react';
+import confetti from 'canvas-confetti';
+
+// ⏱️ Backend agora usa 10 s por rodada
+const ROUND_DURATION = 10;
 
 const EmojiGuessingGame = () => {
+  /* ---------- Refs ---------- */
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
+  const streamRef = useRef(null);
+
+  /* ---------- State ---------- */
   const [isWebcamActive, setIsWebcamActive] = useState(false);
   const [gameState, setGameState] = useState({
     gameActive: false,
@@ -11,13 +19,15 @@ const EmojiGuessingGame = () => {
     currentRound: 0,
     score: 0,
     totalRounds: 10,
-    timeLeft: 30
+    timeLeft: ROUND_DURATION
   });
   const [freezeFrames, setFreezeFrames] = useState([]);
   const [gameOver, setGameOver] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
   const [lastResult, setLastResult] = useState('');
   const [countdown, setCountdown] = useState(null);
+  const [showSuccessEffect, setShowSuccessEffect] = useState(false);
+  const [showFailEffect, setShowFailEffect] = useState(false);
 
   // Styles object
   const styles = {
@@ -316,7 +326,6 @@ const EmojiGuessingGame = () => {
     }
   };
 
-  const streamRef = useRef(null);
 
   // Start webcam
   const startWebcam = async () => {
