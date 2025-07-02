@@ -29,6 +29,9 @@ const EmojiGuessingGame = () => {
   const [showSuccessEffect, setShowSuccessEffect] = useState(false);
   const [showFailEffect, setShowFailEffect] = useState(false);
 
+  // ** Aqui a sua adição: controle de cooldown para evitar checagem rápida entre rounds **
+  const [isCooldown, setIsCooldown] = useState(false);
+
   // Styles object
   const styles = {
     container: {
@@ -409,8 +412,9 @@ useEffect(() => {
   };
 
   // Check current frame
+  // / ** Aqui a função checkFrame atualizada com cooldown **
   const checkFrame = useCallback(async () => {
-    if (!gameState.gameActive || isChecking) return;
+    if (!gameState.gameActive || isChecking || isCooldown) return; // bloqueia checagem se no cooldown
     const frame = captureFrame();
     if (!frame) return;
 
@@ -427,7 +431,6 @@ useEffect(() => {
           setGameState(prev => ({ ...prev, gameActive: false }));
           if (data.freeze_frames) setFreezeFrames(data.freeze_frames);
         } else if (data.expression_matched) {
-          // ✅ Acertou
           setLastResult('🎉 Perfect! +100 points');
           setShowSuccessEffect(true);
 
@@ -444,19 +447,26 @@ useEffect(() => {
             timeLeft: data.game_state.time_left
           });
         } else if (data.round_timeout) {
-          // ❌ Errou/Tempo esgotou
           setLastResult('⏰ Time\'s up! Next round...');
           setShowFailEffect(true);
-          setGameState({
-            gameActive: true,
-            currentEmoji: data.game_state.current_emoji,
-            currentRound: data.game_state.current_round,
-            score: data.game_state.score,
-            totalRounds: data.game_state.total_rounds,
-            timeLeft: data.game_state.time_left
-          });
+          setIsCooldown(true); // ativa cooldown
+
+          setTimeout(() => {
+            setShowFailEffect(false);
+          }, 1500);
+
+          setTimeout(() => {
+            setGameState({
+              gameActive: true,
+              currentEmoji: data.game_state.current_emoji,
+              currentRound: data.game_state.current_round,
+              score: data.game_state.score,
+              totalRounds: data.game_state.total_rounds,
+              timeLeft: data.game_state.time_left
+            });
+            setIsCooldown(false); // libera cooldown
+          }, 2000);
         } else {
-          // atualização normal de tempo
           setGameState(prev => ({ ...prev, timeLeft: data.game_state.time_left }));
         }
       }
@@ -464,10 +474,10 @@ useEffect(() => {
       console.error('Failed to check frame:', err);
     }
     setIsChecking(false);
-  }, [gameState, isChecking, captureFrame]);
+  }, [gameState, isChecking, isCooldown, captureFrame]);
 
   // Auto-check frames during game
-useEffect(() => {
+  useEffect(() => {
     if (gameState.gameActive && isWebcamActive) {
       const interval = setInterval(checkFrame, 500);
       return () => clearInterval(interval);
