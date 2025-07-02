@@ -273,13 +273,13 @@ const EmojiGuessingGame = () => {
       cursor: 'pointer'
     },
     freezeFrameImg: {
-      width: '100%',
-      height: '80px',
-      objectFit: 'cover',
-      borderRadius: '8px',
-      border: '2px solid rgba(255, 255, 255, 0.2)',
-      transition: 'border-color 0.3s ease'
-    },
+  width: '100%',
+  aspectRatio: '1 / 1', // <-- makes it square
+  objectFit: 'cover',
+  borderRadius: '8px',
+  border: '2px solid rgba(255, 255, 255, 0.2)',
+  transition: 'border-color 0.3s ease'
+},
     freezeFrameImgHover: {
       borderColor: 'rgba(255, 255, 255, 0.5)'
     },
@@ -317,7 +317,7 @@ const EmojiGuessingGame = () => {
   };
 
   const streamRef = useRef(null);
-  
+
   // Start webcam
   const startWebcam = async () => {
   try {

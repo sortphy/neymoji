@@ -18,21 +18,28 @@ game_state = {
     'score': 0,
     'total_rounds': 10,
     'round_start_time': time.time(),
-    'round_duration': 30,  # seconds
+    'round_duration': 10,  # seconds
     'freeze_frames': [],
-    'game_active': False
+    'game_active': False,
+    'used_emojis': [],
 }
 
 # Emoji mappings with detection criteria
 EMOJI_CHALLENGES = [
-    {'emoji': '😊', 'name': 'Happy', 'detect_func': 'detect_smile'},
+    {'emoji': '😀', 'name': 'Grinning', 'detect_func': 'detect_smile'},            # similar to 🙂
+    {'emoji': '🙂', 'name': 'Slight Smile', 'detect_func': 'detect_smile'},
+    {'emoji': '😉', 'name': 'Wink', 'detect_func': 'detect_wink'},
+    {'emoji': '😘', 'name': 'Kiss', 'detect_func': 'detect_kiss'},                # similar to 😗
+    {'emoji': '😔', 'name': 'Sad', 'detect_func': 'detect_neutral_or_down'},      # new function
+    {'emoji': '☹️', 'name': 'Frown', 'detect_func': 'detect_neutral_or_down'},
+    {'emoji': '😡', 'name': 'Angry', 'detect_func': 'detect_angry'},              # new function
     {'emoji': '😮', 'name': 'Surprised', 'detect_func': 'detect_surprise'},
     {'emoji': '😴', 'name': 'Sleepy', 'detect_func': 'detect_eyes_closed'},
-    {'emoji': '😗', 'name': 'Kiss', 'detect_func': 'detect_kiss'},
-    {'emoji': '😉', 'name': 'Wink', 'detect_func': 'detect_wink'},
+    {'emoji': '😐', 'name': 'Neutral', 'detect_func': 'detect_neutral'},
     {'emoji': '🙄', 'name': 'Eye Roll', 'detect_func': 'detect_look_up'},
-    {'emoji': '😯', 'name': 'Open Mouth', 'detect_func': 'detect_open_mouth'},
+    {'emoji': '🤢', 'name': 'Nauseated', 'detect_func': 'detect_nausea'}          # new function
 ]
+
 
 # Load face cascade
 face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
@@ -103,13 +110,55 @@ def detect_mouth_opening(roi):
             return True
     return False
 
+def detect_neutral(frame, face):
+    # Assuma que o rosto está presente, sem sorriso, com olhos abertos
+    x, y, w, h = face
+    roi_gray = cv2.cvtColor(frame[y:y+h, x:x+w], cv2.COLOR_BGR2GRAY)
+    smiles = smile_cascade.detectMultiScale(roi_gray, 1.8, 20)
+    eyes = eye_cascade.detectMultiScale(roi_gray)
+    return len(smiles) == 0 and len(eyes) >= 1
+
+def detect_neutral_or_down(frame, face):
+    # Similar ao neutral, mas com inclinação da cabeça
+    if not detect_neutral(frame, face):
+        return False
+    x, y, w, h = face
+    # Verifique se os olhos estão na parte inferior do rosto — cabeça inclinada
+    eyes = eye_cascade.detectMultiScale(cv2.cvtColor(frame[y:y+h//2, x:x+w], cv2.COLOR_BGR2GRAY))
+    return all(ey[1] > h // 4 for ey in eyes) if len(eyes) >= 1 else False
+
+def detect_angry(frame, face):
+    # Detecção aproximada: sem sorriso, olhos intensos (olhos bem detectados)
+    x, y, w, h = face
+    roi_gray = cv2.cvtColor(frame[y:y+h, x:x+w], cv2.COLOR_BGR2GRAY)
+    smiles = smile_cascade.detectMultiScale(roi_gray, 1.8, 20)
+    eyes = eye_cascade.detectMultiScale(roi_gray)
+    return len(smiles) == 0 and len(eyes) >= 2  # sem sorriso e olhos abertos
+
+def detect_nausea(frame, face):
+    # Tentativa: olhos parcialmente fechados ou desviando olhar
+    x, y, w, h = face
+    roi_gray = cv2.cvtColor(frame[y:y+h, x:x+w], cv2.COLOR_BGR2GRAY)
+    eyes = eye_cascade.detectMultiScale(roi_gray)
+    return len(eyes) == 1  # Apenas um olho visível pode simular desconforto
+
+
 def start_new_round():
     if game_state['current_round'] <= game_state['total_rounds']:
-        challenge = random.choice(EMOJI_CHALLENGES)
+        remaining_emojis = [e for e in EMOJI_CHALLENGES if e not in game_state['used_emojis']]
+        
+        if not remaining_emojis:
+            # Reset if all have been used (shouldn’t happen with 10 rounds)
+            game_state['used_emojis'] = []
+            remaining_emojis = EMOJI_CHALLENGES[:]
+        
+        challenge = random.choice(remaining_emojis)
         game_state['current_emoji'] = challenge
+        game_state['used_emojis'].append(challenge)
         game_state['round_start_time'] = time.time()
         return True
     return False
+
 
 def check_expression(frame_data):
     # Decode base64 image
