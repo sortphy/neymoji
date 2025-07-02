@@ -35,12 +35,15 @@ const EmojiGuessingGame = () => {
   // Styles object
   const styles = {
     container: {
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #1e1b4b 0%, #1e3a8a 50%, #312e81 100%)',
-      color: 'white',
-      position: 'relative',
-      overflow: 'hidden'
-    },
+  height: '100vh', // changed from minHeight
+  overflow: 'hidden', // keep this
+  display: 'flex', // allow flex layout
+  flexDirection: 'column',
+  background: 'linear-gradient(135deg, #1e1b4b 0%, #1e3a8a 50%, #312e81 100%)',
+  color: 'white',
+  position: 'relative'
+},
+
     backgroundEffect: {
       position: 'absolute',
       top: 0,
@@ -85,12 +88,16 @@ const EmojiGuessingGame = () => {
       animation: 'pulse 3s ease-in-out infinite 2s'
     },
     content: {
-      position: 'relative',
-      zIndex: 10,
-      maxWidth: '1200px',
-      margin: '0 auto',
-      padding: '32px 16px'
-    },
+  position: 'relative',
+  zIndex: 10,
+  maxWidth: '1200px',
+  margin: '0 auto',
+  padding: '16px',
+  overflow: 'hidden', // allow scroll within content if needed
+  height: '100%', // ensures full height usage
+  flex: 1 // so it stretches to fill remaining height
+},
+
     header: {
       textAlign: 'center',
       marginBottom: '32px'
@@ -277,10 +284,12 @@ const EmojiGuessingGame = () => {
       textAlign: 'center'
     },
     freezeFramesGrid: {
-      display: 'grid',
-      gridTemplateColumns: '1fr 1fr',
-      gap: '12px'
-    },
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
+  gap: '12px',
+
+},
+
     freezeFrame: {
       position: 'relative',
       cursor: 'pointer'
@@ -563,12 +572,7 @@ useEffect(() => {
       <div style={styles.backgroundCircle3}></div>
     </div>
 
-    <div style={styles.content}>
-      {/* Header */}
-      <div style={styles.header}>
-        <h1 style={styles.title}>🎭 Emoji Face Game</h1>
-        <p style={styles.subtitle}>Make the emoji expression with your face!</p>
-      </div>
+   
 
       {/* Game Stats */}
       {gameState.gameActive && (
@@ -725,7 +729,7 @@ useEffect(() => {
             <div style={styles.card}>
               <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '16px' }}>Your Expressions:</h3>
               <div style={styles.freezeFramesGrid}>
-                {freezeFrames.slice(-4).map((frame, index) => (
+                {freezeFrames.map((frame, index) => (
                   <div key={index} style={styles.freezeFrame}>
                     <img
                       src={`data:image/jpeg;base64,${frame.image}`}
@@ -743,38 +747,8 @@ useEffect(() => {
         </div>
       </div>
 
-      {/* Instructions */}
-      <div style={styles.instructions}>
-        <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '16px' }}>How to Play:</h3>
-        <div
-          style={
-            window.innerWidth >= 768
-              ? { ...styles.instructionsGrid, ...styles.instructionsGridMd }
-              : styles.instructionsGrid
-          }
-        >
-          <div style={styles.instructionItem}>
-            <span style={{ fontSize: '1.5rem' }}>📷</span>
-            <div>
-              <strong>Step 1:</strong> Allow camera access and click "Start Camera"
-            </div>
-          </div>
-          <div style={styles.instructionItem}>
-            <span style={{ fontSize: '1.5rem' }}>🎭</span>
-            <div>
-              <strong>Step 2:</strong> Make the emoji expression shown on screen
-            </div>
-          </div>
-          <div style={styles.instructionItem}>
-            <span style={{ fontSize: '1.5rem' }}>🏆</span>
-            <div>
-              <strong>Step 3:</strong> Hold the expression until detected for points!
-            </div>
-          </div>
-        </div>
-      </div>
+    
     </div>
-  </div>
 );
 };
 
