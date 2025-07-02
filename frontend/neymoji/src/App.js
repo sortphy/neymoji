@@ -327,27 +327,24 @@ const EmojiGuessingGame = () => {
   };
 
 
-  // Start webcam
+  /* ---------- Webcam ---------- */
   const startWebcam = async () => {
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { width: 640, height: 480 },
-    });
-    streamRef.current = stream;        // 1
-    setIsWebcamActive(true);           // 2
-  } catch (err) {
-    console.error('Error accessing webcam:', err);
-    alert('Unable to access webcam. Please allow camera permissions.');
-  }
-}
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+      streamRef.current = stream;
+      setIsWebcamActive(true);
+    } catch (err) {
+      console.error('Error accessing webcam:', err);
+      alert('Unable to access webcam. Please allow camera permissions.');
+    }
+  };
 
-useEffect(() => {                      // 3
-  if (isWebcamActive && videoRef.current && streamRef.current) {
-    videoRef.current.srcObject = streamRef.current;
-    // garante início da reprodução no iOS/Safari
-    videoRef.current.onloadedmetadata = () => videoRef.current.play();
-  }
-}, [isWebcamActive]);
+useEffect(() => {
+    if (isWebcamActive && videoRef.current && streamRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+      videoRef.current.onloadedmetadata = () => videoRef.current.play();
+    }
+  }, [isWebcamActive]);
 
   // Capture frame from video
   const captureFrame = useCallback(() => {
@@ -362,27 +359,35 @@ useEffect(() => {                      // 3
     return null;
   }, []);
 
+  /* ---------- Efeitos Visuais ---------- */
+  useEffect(() => {
+    if (showSuccessEffect) {
+      confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+      const t = setTimeout(() => setShowSuccessEffect(false), 1500);
+      return () => clearTimeout(t);
+    }
+  }, [showSuccessEffect]);
+
+
   // Start new game
   const startGame = async () => {
+    // 3‑second countdown
     setCountdown(3);
-    const countdownInterval = setInterval(() => {
+    const cd = setInterval(() => {
       setCountdown(prev => {
         if (prev <= 1) {
-          clearInterval(countdownInterval);
+          clearInterval(cd);
           return null;
         }
         return prev - 1;
       });
     }, 1000);
 
+    // start after countdown
     setTimeout(async () => {
       try {
-        const response = await fetch('http://localhost:5000/start_game', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' }
-        });
-        const data = await response.json();
-        
+        const res = await fetch('http://localhost:5000/start_game', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+        const data = await res.json();
         if (data.success) {
           setGameState({
             gameActive: true,
@@ -406,35 +411,30 @@ useEffect(() => {                      // 3
   // Check current frame
   const checkFrame = useCallback(async () => {
     if (!gameState.gameActive || isChecking) return;
-    
     const frame = captureFrame();
     if (!frame) return;
 
     setIsChecking(true);
     try {
-      const response = await fetch('http://localhost:5000/check_frame', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ frame })
+      const res = await fetch('http://localhost:5000/check_frame', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ frame })
       });
-      const data = await response.json();
-      
+      const data = await res.json();
+
       if (data.success) {
         if (data.game_over) {
           setGameOver(true);
           setGameState(prev => ({ ...prev, gameActive: false }));
-          if (data.freeze_frames) {
-            setFreezeFrames(data.freeze_frames);
-          }
+          if (data.freeze_frames) setFreezeFrames(data.freeze_frames);
         } else if (data.expression_matched) {
+          // ✅ Acertou
           setLastResult('🎉 Perfect! +100 points');
+          setShowSuccessEffect(true);
+
           if (data.freeze_frame) {
-            setFreezeFrames(prev => [...prev, {
-              round: gameState.currentRound,
-              emoji: gameState.currentEmoji,
-              image: data.freeze_frame
-            }]);
+            setFreezeFrames(prev => [...prev, { round: gameState.currentRound, emoji: gameState.currentEmoji, image: data.freeze_frame }]);
           }
+
           setGameState({
             gameActive: true,
             currentEmoji: data.game_state.current_emoji,
@@ -444,7 +444,9 @@ useEffect(() => {                      // 3
             timeLeft: data.game_state.time_left
           });
         } else if (data.round_timeout) {
+          // ❌ Errou/Tempo esgotou
           setLastResult('⏰ Time\'s up! Next round...');
+          setShowFailEffect(true);
           setGameState({
             gameActive: true,
             currentEmoji: data.game_state.current_emoji,
@@ -454,25 +456,22 @@ useEffect(() => {                      // 3
             timeLeft: data.game_state.time_left
           });
         } else {
-          setGameState(prev => ({
-            ...prev,
-            timeLeft: data.game_state.time_left
-          }));
+          // atualização normal de tempo
+          setGameState(prev => ({ ...prev, timeLeft: data.game_state.time_left }));
         }
       }
     } catch (err) {
       console.error('Failed to check frame:', err);
     }
     setIsChecking(false);
-  }, [gameState.gameActive, gameState.currentRound, gameState.currentEmoji, isChecking, captureFrame]);
+  }, [gameState, isChecking, captureFrame]);
 
   // Auto-check frames during game
-  useEffect(() => {
-    let interval;
+useEffect(() => {
     if (gameState.gameActive && isWebcamActive) {
-      interval = setInterval(checkFrame, 500); // Check every 500ms
+      const interval = setInterval(checkFrame, 500);
+      return () => clearInterval(interval);
     }
-    return () => clearInterval(interval);
   }, [gameState.gameActive, isWebcamActive, checkFrame]);
 
   // Clear last result after 3 seconds
@@ -483,6 +482,13 @@ useEffect(() => {                      // 3
     }
   }, [lastResult]);
 
+    useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.5}}@keyframes bounce{0%,20%,53%,80%,100%{transform:translate3d(0,0,0);}40%,43%{transform:translate3d(0,-20px,0);}70%{transform:translate3d(0,-10px,0);}90%{transform:translate3d(0,-4px,0);} }@keyframes ping{75%,100%{transform:scale(2);opacity:0;}}`;
+    document.head.appendChild(style);
+    return () => document.head.removeChild(style);
+  }, []);
+  
   // Add CSS animations
   useEffect(() => {
     const style = document.createElement('style');
@@ -506,225 +512,251 @@ useEffect(() => {                      // 3
   }, []);
 
   return (
-    <div style={styles.container}>
-      {/* Animated Background */}
-      <div style={styles.backgroundEffect}>
-        <div style={styles.backgroundCircle1}></div>
-        <div style={styles.backgroundCircle2}></div>
-        <div style={styles.backgroundCircle3}></div>
+  <div style={styles.container}>
+    {/* Confetti overlay (canvas-confetti desenha direto no canvas, aqui só placeholder para controle z-index) */}
+    {showSuccessEffect && (
+      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 999 }} />
+    )}
+
+    {/* X vermelho overlay (overlay semi-transparente vermelho com X grande no centro) */}
+    {showFailEffect && (
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          backgroundColor: 'rgba(255,0,0,0.4)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 998,
+        }}
+      >
+        <XCircle size={160} color="white" />
+      </div>
+    )}
+
+    {/* --- Seu conteúdo atual do componente começa aqui --- */}
+
+    {/* Animated Background */}
+    <div style={styles.backgroundEffect}>
+      <div style={styles.backgroundCircle1}></div>
+      <div style={styles.backgroundCircle2}></div>
+      <div style={styles.backgroundCircle3}></div>
+    </div>
+
+    <div style={styles.content}>
+      {/* Header */}
+      <div style={styles.header}>
+        <h1 style={styles.title}>🎭 Emoji Face Game</h1>
+        <p style={styles.subtitle}>Make the emoji expression with your face!</p>
       </div>
 
-      <div style={styles.content}>
-        {/* Header */}
-        <div style={styles.header}>
-          <h1 style={styles.title}>
-            🎭 Emoji Face Game
-          </h1>
-          <p style={styles.subtitle}>Make the emoji expression with your face!</p>
+      {/* Game Stats */}
+      {gameState.gameActive && (
+        <div style={styles.gameStats}>
+          <div style={styles.statsContainer}>
+            <div style={styles.statItem}>
+              <Target size={20} color="#10b981" />
+              <span>
+                Round {gameState.currentRound}/{gameState.totalRounds}
+              </span>
+            </div>
+            <div style={styles.statItem}>
+              <Trophy size={20} color="#fbbf24" />
+              <span>{gameState.score} points</span>
+            </div>
+            <div style={styles.statItem}>
+              <Clock size={20} color="#ef4444" />
+              <span>{Math.ceil(gameState.timeLeft)}s</span>
+            </div>
+          </div>
         </div>
+      )}
 
-        {/* Game Stats */}
-        {gameState.gameActive && (
-          <div style={styles.gameStats}>
-            <div style={styles.statsContainer}>
-              <div style={styles.statItem}>
-                <Target size={20} color="#10b981" />
-                <span>Round {gameState.currentRound}/{gameState.totalRounds}</span>
+      <div
+        style={
+          window.innerWidth >= 1024
+            ? { ...styles.mainGrid, ...styles.mainGridLarge }
+            : styles.mainGrid
+        }
+      >
+        {/* Webcam Section */}
+        <div style={styles.webcamSection}>
+          <div style={styles.videoContainer}>
+            {!isWebcamActive ? (
+              <div style={styles.videoPlaceholder}>
+                <button
+                  onClick={startWebcam}
+                  style={styles.button}
+                  onMouseEnter={(e) => Object.assign(e.target.style, styles.buttonHover)}
+                  onMouseLeave={(e) => Object.assign(e.target.style, styles.button)}
+                >
+                  <Camera size={24} />
+                  Start Camera
+                </button>
               </div>
-              <div style={styles.statItem}>
-                <Trophy size={20} color="#fbbf24" />
-                <span>{gameState.score} points</span>
-              </div>
-              <div style={styles.statItem}>
-                <Clock size={20} color="#ef4444" />
-                <span>{Math.ceil(gameState.timeLeft)}s</span>
-              </div>
-            </div>
-          </div>
-        )}
+            ) : (
+              <>
+                <video ref={videoRef} autoPlay playsInline muted style={styles.video} />
+                <canvas ref={canvasRef} style={{ display: 'none' }} />
 
-        <div style={window.innerWidth >= 1024 ? { ...styles.mainGrid, ...styles.mainGridLarge } : styles.mainGrid}>
-          {/* Webcam Section */}
-          <div style={styles.webcamSection}>
-            <div style={styles.videoContainer}>
-              {!isWebcamActive ? (
-                <div style={styles.videoPlaceholder}>
-                  <button
-                    onClick={startWebcam}
-                    style={styles.button}
-                    onMouseEnter={(e) => Object.assign(e.target.style, styles.buttonHover)}
-                    onMouseLeave={(e) => Object.assign(e.target.style, styles.button)}
-                  >
-                    <Camera size={24} />
-                    Start Camera
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    style={styles.video}
-                  />
-                  <canvas ref={canvasRef} style={{ display: 'none' }} />
-                  
-                  {/* Overlay indicators */}
-                  {gameState.gameActive && (
-                    <div style={styles.overlay}>
-                      <div style={styles.liveIndicator}>
-                        LIVE
-                      </div>
-                      {isChecking && (
-                        <div style={styles.analyzingIndicator}>
-                          Analyzing...
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Countdown overlay */}
-                  {countdown && (
-                    <div style={styles.countdownOverlay}>
-                      <div style={styles.countdownNumber}>
-                        {countdown}
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Game Panel */}
-          <div style={styles.sidePanel}>
-            {/* Current Challenge */}
-            {gameState.gameActive && gameState.currentEmoji ? (
-              <div style={styles.card}>
-                <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '16px' }}>Make This Expression:</h3>
-                <div style={styles.challengeEmoji}>
-                  {gameState.currentEmoji.emoji}
-                </div>
-                <p style={styles.challengeName}>
-                  {gameState.currentEmoji.name}
-                </p>
-                
-                {/* Progress Bar */}
-                <div style={styles.progressBar}>
-                  <div style={styles.progressBarBg}>
-                    <div 
-                      style={{
-                        ...styles.progressBarFill,
-                        width: `${(gameState.timeLeft / 30) * 100}%`
-                      }}
-                    ></div>
+                {/* Overlay indicators */}
+                {gameState.gameActive && (
+                  <div style={styles.overlay}>
+                    <div style={styles.liveIndicator}>LIVE</div>
+                    {isChecking && <div style={styles.analyzingIndicator}>Analyzing...</div>}
                   </div>
-                </div>
-              </div>
-            ) : !gameOver && (
-              <div style={styles.card}>
-                <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '24px' }}>Ready to Play?</h3>
-                <button
-                  onClick={startGame}
-                  disabled={!isWebcamActive || countdown !== null}
-                  style={!isWebcamActive || countdown !== null ? 
-                    { ...styles.button, ...styles.buttonDisabled } : 
-                    { ...styles.button, background: 'linear-gradient(to right, #10b981, #3b82f6)' }
-                  }
-                  onMouseEnter={(e) => {
-                    if (isWebcamActive && countdown === null) {
-                      Object.assign(e.target.style, { background: 'linear-gradient(to right, #059669, #2563eb)' });
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (isWebcamActive && countdown === null) {
-                      Object.assign(e.target.style, { background: 'linear-gradient(to right, #10b981, #3b82f6)' });
-                    }
-                  }}
-                >
-                  <Play size={24} />
-                  Start Game
-                </button>
-              </div>
-            )}
+                )}
 
-            {/* Last Result */}
-            {lastResult && (
-              <div style={styles.resultCard}>
-                <p style={{ fontSize: '1.125rem', fontWeight: '600' }}>{lastResult}</p>
-              </div>
-            )}
-
-            {/* Game Over */}
-            {gameOver && (
-              <div style={styles.gameOverCard}>
-                <h3 style={{ fontSize: '1.875rem', fontWeight: 'bold', marginBottom: '16px' }}>🎉 Game Over!</h3>
-                <p style={{ fontSize: '1.25rem', marginBottom: '16px' }}>Final Score: <span style={{ color: '#fbbf24', fontWeight: 'bold' }}>{gameState.score}</span></p>
-                <button
-                  onClick={startGame}
-                  style={{ ...styles.button, background: 'linear-gradient(to right, #a855f7, #ec4899)' }}
-                  onMouseEnter={(e) => Object.assign(e.target.style, { background: 'linear-gradient(to right, #9333ea, #db2777)' })}
-                  onMouseLeave={(e) => Object.assign(e.target.style, { background: 'linear-gradient(to right, #a855f7, #ec4899)' })}
-                >
-                  <RotateCcw size={20} />
-                  Play Again
-                </button>
-              </div>
-            )}
-
-            {/* Freeze Frames Gallery */}
-            {freezeFrames.length > 0 && (
-              <div style={styles.card}>
-                <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '16px' }}>Your Expressions:</h3>
-                <div style={styles.freezeFramesGrid}>
-                  {freezeFrames.slice(-4).map((frame, index) => (
-                    <div key={index} style={styles.freezeFrame}>
-                      <img
-                        src={`data:image/jpeg;base64,${frame.image}`}
-                        alt={`Expression ${frame.round}`}
-                        style={styles.freezeFrameImg}
-                        onMouseEnter={(e) => Object.assign(e.target.style, styles.freezeFrameImgHover)}
-                        onMouseLeave={(e) => Object.assign(e.target.style, styles.freezeFrameImg)}
-                      />
-                      <div style={styles.freezeFrameEmoji}>
-                        {frame.emoji?.emoji}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+                {/* Countdown overlay */}
+                {countdown && (
+                  <div style={styles.countdownOverlay}>
+                    <div style={styles.countdownNumber}>{countdown}</div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
 
-        {/* Instructions */}
-        <div style={styles.instructions}>
-          <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '16px' }}>How to Play:</h3>
-          <div style={window.innerWidth >= 768 ? { ...styles.instructionsGrid, ...styles.instructionsGridMd } : styles.instructionsGrid}>
-            <div style={styles.instructionItem}>
-              <span style={{ fontSize: '1.5rem' }}>📷</span>
-              <div>
-                <strong>Step 1:</strong> Allow camera access and click "Start Camera"
+        {/* Game Panel */}
+        <div style={styles.sidePanel}>
+          {/* Current Challenge */}
+          {gameState.gameActive && gameState.currentEmoji ? (
+            <div style={styles.card}>
+              <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '16px' }}>
+                Make This Expression:
+              </h3>
+              <div style={styles.challengeEmoji}>{gameState.currentEmoji.emoji}</div>
+              <p style={styles.challengeName}>{gameState.currentEmoji.name}</p>
+
+              {/* Progress Bar */}
+              <div style={styles.progressBar}>
+                <div style={styles.progressBarBg}>
+                  <div
+                    style={{
+                      ...styles.progressBarFill,
+                      width: `${(gameState.timeLeft / ROUND_DURATION) * 100}%`, // Usar constante ROUND_DURATION para tempo de cada round
+                    }}
+                  ></div>
+                </div>
               </div>
             </div>
-            <div style={styles.instructionItem}>
-              <span style={{ fontSize: '1.5rem' }}>🎭</span>
-              <div>
-                <strong>Step 2:</strong> Make the emoji expression shown on screen
+          ) : !gameOver && (
+            <div style={styles.card}>
+              <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '24px' }}>Ready to Play?</h3>
+              <button
+                onClick={startGame}
+                disabled={!isWebcamActive || countdown !== null}
+                style={
+                  !isWebcamActive || countdown !== null
+                    ? { ...styles.button, ...styles.buttonDisabled }
+                    : { ...styles.button, background: 'linear-gradient(to right, #10b981, #3b82f6)' }
+                }
+                onMouseEnter={(e) => {
+                  if (isWebcamActive && countdown === null) {
+                    Object.assign(e.target.style, { background: 'linear-gradient(to right, #059669, #2563eb)' });
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (isWebcamActive && countdown === null) {
+                    Object.assign(e.target.style, { background: 'linear-gradient(to right, #10b981, #3b82f6)' });
+                  }
+                }}
+              >
+                <Play size={24} />
+                Start Game
+              </button>
+            </div>
+          )}
+
+          {/* Last Result */}
+          {lastResult && (
+            <div style={styles.resultCard}>
+              <p style={{ fontSize: '1.125rem', fontWeight: '600' }}>{lastResult}</p>
+            </div>
+          )}
+
+          {/* Game Over */}
+          {gameOver && (
+            <div style={styles.gameOverCard}>
+              <h3 style={{ fontSize: '1.875rem', fontWeight: 'bold', marginBottom: '16px' }}>🎉 Game Over!</h3>
+              <p style={{ fontSize: '1.25rem', marginBottom: '16px' }}>
+                Final Score:{' '}
+                <span style={{ color: '#fbbf24', fontWeight: 'bold' }}>{gameState.score}</span>
+              </p>
+              <button
+                onClick={startGame}
+                style={{ ...styles.button, background: 'linear-gradient(to right, #a855f7, #ec4899)' }}
+                onMouseEnter={(e) =>
+                  Object.assign(e.target.style, { background: 'linear-gradient(to right, #9333ea, #db2777)' })
+                }
+                onMouseLeave={(e) =>
+                  Object.assign(e.target.style, { background: 'linear-gradient(to right, #a855f7, #ec4899)' })
+                }
+              >
+                <RotateCcw size={20} />
+                Play Again
+              </button>
+            </div>
+          )}
+
+          {/* Freeze Frames Gallery */}
+          {freezeFrames.length > 0 && (
+            <div style={styles.card}>
+              <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '16px' }}>Your Expressions:</h3>
+              <div style={styles.freezeFramesGrid}>
+                {freezeFrames.slice(-4).map((frame, index) => (
+                  <div key={index} style={styles.freezeFrame}>
+                    <img
+                      src={`data:image/jpeg;base64,${frame.image}`}
+                      alt={`Expression ${frame.round}`}
+                      style={styles.freezeFrameImg}
+                      onMouseEnter={(e) => Object.assign(e.target.style, styles.freezeFrameImgHover)}
+                      onMouseLeave={(e) => Object.assign(e.target.style, styles.freezeFrameImg)}
+                    />
+                    <div style={styles.freezeFrameEmoji}>{frame.emoji?.emoji}</div>
+                  </div>
+                ))}
               </div>
             </div>
-            <div style={styles.instructionItem}>
-              <span style={{ fontSize: '1.5rem' }}>🏆</span>
-              <div>
-                <strong>Step 3:</strong> Hold the expression until detected for points!
-              </div>
+          )}
+        </div>
+      </div>
+
+      {/* Instructions */}
+      <div style={styles.instructions}>
+        <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '16px' }}>How to Play:</h3>
+        <div
+          style={
+            window.innerWidth >= 768
+              ? { ...styles.instructionsGrid, ...styles.instructionsGridMd }
+              : styles.instructionsGrid
+          }
+        >
+          <div style={styles.instructionItem}>
+            <span style={{ fontSize: '1.5rem' }}>📷</span>
+            <div>
+              <strong>Step 1:</strong> Allow camera access and click "Start Camera"
+            </div>
+          </div>
+          <div style={styles.instructionItem}>
+            <span style={{ fontSize: '1.5rem' }}>🎭</span>
+            <div>
+              <strong>Step 2:</strong> Make the emoji expression shown on screen
+            </div>
+          </div>
+          <div style={styles.instructionItem}>
+            <span style={{ fontSize: '1.5rem' }}>🏆</span>
+            <div>
+              <strong>Step 3:</strong> Hold the expression until detected for points!
             </div>
           </div>
         </div>
       </div>
     </div>
-  );
+  </div>
+);
 };
 
 export default EmojiGuessingGame;
