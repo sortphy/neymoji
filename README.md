@@ -1,6 +1,5 @@
 Sure! Here's a clean and simple `README.md` for your **neymoji** project:
 
-````markdown
 # ⚽ Neymoji
 
 **Neymoji** is a fun project that combines computer vision and frontend magic. Just run the backend and frontend, smile for the camera, and enjoy!
@@ -66,7 +65,5 @@ Make sure you **have a working webcam** enabled!
 
 Enjoy using **Neymoji**! 🎉
 
-```
 
 Let me know if you'd like badges, images, or extra sections (like "Tech Stack" or "License")!
-```
