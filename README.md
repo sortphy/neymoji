@@ -5,7 +5,7 @@
 
 ### Slides: https://www.canva.com/design/DAGsDqHQnBM/Ze-me39VlngDIezqmkOolA/view?utm_content=DAGsDqHQnBM&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=h3f3eecfcab
 
-### Relatorio abaixo, no final desse README!
+### Relatório abaixo, no final desse README!
 
 ------------------
 
@@ -64,7 +64,7 @@ Divirta-se usando o **Neymoji**! 😁
 
 -----------------
 -----------------
-# Relatorio
+# Relatório
 
 ## Universidade Católica de Santa Catarina - Unidade Joinville  
 **Curso:** Engenharia de Software  
