@@ -1,27 +1,32 @@
 # 😀 Neymoji
 
----
 
-## 😎 How to Run
+### Grupo: Gustavo Martins, Icaro Botelho, Maruan Biasi e Ricardo Falcao.
 
-You'll need **two terminals**: one for the backend and one for the frontend.
+### Slides: https://www.canva.com/design/DAGsDqHQnBM/Ze-me39VlngDIezqmkOolA/view?utm_content=DAGsDqHQnBM&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=h3f3eecfcab
+
+------------------
+
+## 😎 Como Rodar
+
+Você vai precisar de **dois terminais**: um pro backend e outro pro frontend.
 
 ---
 
 ### 😊 Backend
 
-1. Open a terminal  
-2. Navigate to the project root  
-3. Create and activate a virtual environment:
+1. Abre um terminal  
+2. Vai até a raiz do projeto  
+3. Cria e ativa um ambiente virtual:
    ```bash
    python -m venv venv
-   source venv/bin/activate     # On Windows: venv\Scripts\activate
+   source venv/bin/activate     # No Windows: venv\Scripts\activate
    ```
-4. Install dependencies:
+4. Instala as dependências:
    ```bash
    pip install -r requirements.txt
    ```
-5. Run the backend:
+5. Roda o backend:
    ```bash
    python main.py
    ```
@@ -30,27 +35,27 @@ You'll need **two terminals**: one for the backend and one for the frontend.
 
 ### 😃 Frontend
 
-1. Open a second terminal  
-2. Navigate to the frontend directory:
+1. Abre um segundo terminal  
+2. Vai até a pasta do frontend:
    ```bash
    cd frontend/neymoji
    ```
-3. Install dependencies:
+3. Instala as dependências:
    ```bash
    npm install
    ```
-4. Start the frontend:
+4. Inicia o frontend:
    ```bash
    npm start
    ```
 
 ---
 
-### 😄 Open in Browser
+### 😄 Abre no Navegador
 
-Go to: [http://localhost:3000](http://localhost:3000)  
-Make sure you **have a working webcam** enabled!
+Vai em: [http://localhost:3000](http://localhost:3000)  
+Garante que você **tá com uma webcam funcionando**!
 
 ---
 
-Enjoy using **Neymoji**! 😁
+Divirta-se usando o **Neymoji**! 😁
